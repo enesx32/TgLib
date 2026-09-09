@@ -33,9 +33,9 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
     VK_F12,
 };
 
-use crate::types::Key;
+use crate::types::{ Key, NotificationType };
 
-use std::process::Command;
+use std::process::{Command,Stdio };
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
@@ -59,6 +59,28 @@ pub fn install_ctrl_c_handler() {
     }
 }
 
+pub fn notify(title: &str, body: &str, type_: NotificationType) {
+    let icon_name = match type_ {
+        NotificationType::Info => "Info",
+        NotificationType::Warn => "Warning",
+        NotificationType::Error => "Error",
+    };
+
+    let script = format!(
+        "[void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms'); \
+         $n = New-Object System.Windows.Forms.NotifyIcon; \
+         $n.Icon = [System.Drawing.SystemIcons]::{}; \
+         $n.Visible = $true; \
+         $n.ShowBalloonTip(5000, '{}', '{}', [System.Windows.Forms.ToolTipIcon]::{});",
+        icon_name, title, body, icon_name
+    );
+
+    let _ = Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+}
 pub fn is_interrupted() -> bool {
     INTERRUPTED.load(Ordering::SeqCst)
 }
@@ -201,6 +223,8 @@ pub fn get_terminal_height() -> u16 {
         Err(_) => 24,
     }
 }
+
+
 
 pub fn get_terminal_width() -> u16 {
     let mut csbi: CONSOLE_SCREEN_BUFFER_INFO = unsafe {

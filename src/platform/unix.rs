@@ -6,7 +6,7 @@ use libc::{
     TIOCGWINSZ,
 };
 
-use crate::types::Key;
+use crate::types::{ Key, NotificationType };
 
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
@@ -173,6 +173,21 @@ pub fn read_key() -> Option<Key> {
     }
 
     char_to_key(buffer[0])
+}
+
+pub fn notify(title: &str, body: &str, msg_type: NotificationType) {
+    let urgency = match msg_type {
+        NotificationType::Info => "low",
+        NotificationType::Warn => "normal",
+        NotificationType::Error => "critical",
+    };
+
+    let _ = Command::new("notify-send")
+        .arg("-u")
+        .arg(urgency)
+        .arg(title)
+        .arg(body)
+        .status();
 }
 
 pub fn get_terminal_size() -> (u16, u16) {

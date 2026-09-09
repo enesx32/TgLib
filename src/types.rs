@@ -30,3 +30,10 @@ pub enum Key {
     F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12,
     TAB, CAPS, SHIFT, CTRL, WIN, ALT, SPACE, UP, DOWN, LEFT, RIGHT
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NotificationType {
+    Info,
+    Warn,
+    Error,
+}

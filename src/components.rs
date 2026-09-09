@@ -1,6 +1,8 @@
-use std::default;
-
-use crate::types::{ Text, Key };
+use crate::types::{ Text, Key, NotificationType };
+#[cfg(target_os = "windows")]
+use crate::platform::windows::notify;
+#[cfg(unix)]
+use crate::platform::unix::notify;
 
 pub struct Label {
     pub pos: (u16, u16),
@@ -39,7 +41,7 @@ impl NCLabel {
 pub struct Cell {
     pub pos: (u16, u16),
     pub color: &'static str,
-    pub char_: char,
+    pub char_: char,    
     pub char_color: &'static str,
 }
 
@@ -72,4 +74,24 @@ impl std::fmt::Display for PixelSet {
 pub struct BIND {
     pub func: fn (),
     pub key:  Key
+}
+
+pub struct Notification {
+    title: String,
+    body: String,
+    type_: NotificationType
+}
+
+impl Notification {
+    pub fn new(title: impl Into<String>, body: impl Into<String>, type_: NotificationType) -> Self {
+        Self {
+            title: title.into(),
+            body: body.into(),
+            type_,
+        }
+    }
+
+    pub fn push(&self) {
+        notify(self.title.as_str(), self.body.as_str(), self.type_);
+    }
 }
