@@ -248,6 +248,23 @@ fn main() {
 }
 ```
 
+## Notifications
+
+TgLib allows you to trigger native desktop notifications across Windows and Unix platforms without extra dependencies.
+
+```rust
+use t_glib::components::Notification;
+use t_glib::types::NotificationType;
+
+fn main() {
+    Notification::new(
+        "I am a Title",
+        "I am the body",
+        NotificationType::Info,
+    ).push();
+}
+```
+
 ## Status
 
 TgLib is currently in **early development (0.2.3)**.
