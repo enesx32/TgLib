@@ -49,10 +49,10 @@ Platform-specific dependencies are managed through Cargo.
 This example creates a terminal, displays a coloured label, and exits when the terminal is interrupted.
 
 ```rust
-use tglib_rs::Terminal;
-use tglib_rs::components::Label;
-use tglib_rs::colors::*;
-use tglib_rs::types::Text;
+use tglib::Terminal;
+use tglib::components::Label;
+use tglib::colors::*;
+use tglib::types::Text;
 use std::time::Duration;
 
 fn main() {
@@ -104,7 +104,7 @@ cargo run
 TgLib provides colour constants through its `colors` module.
 
 ```rust
-use tglib_rs::colors::*;
+use tglib::colors::*;
 
 GREEN
 RED
@@ -144,8 +144,8 @@ A pixel represents a coloured space in the terminal. Multiple pixels can be comb
 For example, you can arrange yellow and black pixels to draw a smiley face.
 
 ```rust
-use tglib_rs::components::{Pixel, PixelSet};
-use tglib_rs::colors::*;
+use tglib::components::{Pixel, PixelSet};
+use tglib::colors::*;
 
 let pixel_set = PixelSet {
     pixels: vec![
@@ -169,8 +169,8 @@ A cell can contain a character with its own foreground and background colours.
 For example:
 
 ```rust
-use tglib_rs::components::Cell;
-use tglib_rs::colors::*;
+use tglib::components::Cell;
+use tglib::colors::*;
 
 let my_cell = Cell {
     pos: (1, 1),
@@ -191,8 +191,8 @@ TgLib supports binding keys to functions.
 For example, you can bind the space bar to a function that increments a counter.
 
 ```rust
-use tglib_rs::components::BIND;
-use tglib_rs::types::Key;
+use tglib::components::BIND;
+use tglib::types::Key;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 static COUNT: AtomicUsize = AtomicUsize::new(0);
@@ -243,8 +243,8 @@ In this example:
 TgLib supports desktop notifications on Windows and Unix platforms.
 
 ```rust
-use tglib_rs::components::Notification;
-use tglib_rs::types::NotificationType;
+use tglib::components::Notification;
+use tglib::types::NotificationType;
 
 fn main() {
     Notification::new(
