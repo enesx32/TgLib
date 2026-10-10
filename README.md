@@ -2,75 +2,57 @@
 
 A lightweight terminal UI library for Rust.
 
-TgLib is designed to make building terminal-based applications easier by providing simple abstractions for terminal management, text, colours, and components.
+TgLib (Terminal Graphics Library) makes building terminal-based applications easier with simple abstractions for terminal management, text, colours, components, and key bindings.
 
-> **Current version: 0.2.3**
+[![Crates.io](https://img.shields.io/crates/v/tglib-rs?style=flat-square)](https://crates.io/crates/tglib-rs)
+[![Downloads](https://img.shields.io/crates/d/tglib-rs?style=flat-square)](https://crates.io/crates/tglib-rs)
+[![Documentation](https://img.shields.io/docsrs/tglib-rs?style=flat-square)](https://docs.rs/tglib-rs)
+[![License](https://img.shields.io/crates/l/tglib-rs?style=flat-square)](https://github.com/enesx32/TgLib)
+[![GitHub Stars](https://img.shields.io/github/stars/enesx32/TgLib?style=flat-square)](https://github.com/enesx32/TgLib)
 
 ## Features
 
-* Terminal size detection
-* Cross-platform terminal support
-* Screen clearing
-* Coloured text
-* Background colours
-* Text components
-* Simple terminal UI structure
-* Windows and Unix support
-* Added Keybind support
+- Terminal size detection
+- Cross-platform terminal support
+- Screen clearing and terminal management
+- Foreground and background colours
+- Text components and positioned labels
+- Pixel-based terminal graphics
+- Individual character cells
+- Key binding support
+- Desktop notifications
+- Windows and Unix support
 
-## Requirements
+## Installation
 
-* Rust
-* Cargo
-* Git
-
-## Installation & Running
-
-### Windows — PowerShell
+Add TgLib to your Rust project using Cargo:
 
 ```powershell
-git clone https://github.com/enes73546/TgLib.git; cd TgLib; cargo add windows; cargo run
+cargo add tglib-rs
 ```
 
-### Linux / macOS — Bash
+Or add it manually to your `Cargo.toml`:
 
-```bash
-git clone https://github.com/enes73546/TgLib.git && cd TgLib && cargo add libc && cargo run
+```toml
+[dependencies]
+tglib-rs = "0.2.3"
 ```
 
-## Platform Dependencies
+**Requirements**
+- Rust
+- Cargo
 
-TgLib uses platform-specific libraries to interact with the terminal.
+Platform-specific dependencies are managed through Cargo.
 
-### Windows
+## Basic Example
 
-Windows support uses the `windows` crate.
-
-If you are building TgLib on Windows, install it with:
-
-```powershell
-cargo add windows
-```
-
-### Unix / Linux / macOS
-
-Unix-based systems use the `libc` crate.
-
-Install it with:
-
-```bash
-cargo add libc
-```
-
-`libc` is not part of the Rust standard library, so it must be included as a Cargo dependency.
-
-## Basic Example - Found in main.rs
+This example creates a terminal, displays a coloured label, and exits when the terminal is interrupted.
 
 ```rust
-use t_glib::Terminal;
-use t_glib::components::Label;
-use t_glib::colors::*;
-use t_glib::types::Text;
+use tglib_rs::Terminal;
+use tglib_rs::components::Label;
+use tglib_rs::colors::*;
+use tglib_rs::types::Text;
 use std::time::Duration;
 
 fn main() {
@@ -86,6 +68,7 @@ fn main() {
             "Welcome to TgLib! | Version 0.2.3"
         ),
     };
+
     loop {
         terminal.printc(&my_text);
         terminal.hide_cursor();
@@ -95,9 +78,7 @@ fn main() {
                 pos: (40, 5),
                 fore_color: RED,
                 back_color: BG_BLACK,
-                text: Text::from_str(
-                    "Exiting Program"
-                ),
+                text: Text::from_str("Exiting Program"),
             };
 
             terminal.printc(&interrupt_text);
@@ -112,28 +93,18 @@ fn main() {
 }
 ```
 
-## Project Structure
+Run your application with:
 
-```text
-src/
-├── lib.rs
-├── main.rs
-├── terminal.rs
-├── types.rs
-├── colors.rs
-├── components.rs
-└── platform/
-    ├── mod.rs
-    ├── windows.rs
-    └── unix.rs
+```powershell
+cargo run
 ```
 
 ## Colours
 
-TgLib provides ANSI colour constants such as:
+TgLib provides colour constants through its `colors` module.
 
 ```rust
-use t_glib::colors::*;
+use tglib_rs::colors::*;
 
 GREEN
 RED
@@ -144,11 +115,13 @@ BG_RED
 RESET
 ```
 
+Use foreground colours to change text colour and background colours to change the colour behind text.
+
 More colours and styles are available in the `colors` module.
 
 ## Terminal Coordinates
 
-TgLib uses `(x, y)` for positions.
+TgLib uses `(x, y)` coordinates to position components.
 
 For example:
 
@@ -156,105 +129,122 @@ For example:
 pos: (40, 3)
 ```
 
-means:
+This represents column `40` and row `3`.
 
-```py
-x = 40
-y = 3
-```
-
-The coordinate system is used when positioning components inside the terminal.
+Coordinates use terminal character cells, not physical screen pixels.
 
 ## Pixels and Cells
 
-In the TgLib (Terminal Graphics Library) API a Pixel is a single space in the terminal which can have a color 
-however a cell can have a character inside it with its own color
+TgLib provides ways to draw simple graphics directly in the terminal.
 
-> * You can see this in further depth in `TgLib v0.2.1`
+### Pixels
 
-```rs
-use t_glib::components::{ Label, Pixel, PixelSet };
-use t_glib::colors::*;
+A pixel represents a coloured space in the terminal. Multiple pixels can be combined into a `PixelSet` to create shapes and patterns.
 
-fn main() {
-    let pixel_set = PixelSet { 
-            pixels: vec![
-                Pixel { pos: (40, 5), color: YELLOW }, Pixel { pos: (41, 5), color: YELLOW },
-                Pixel { pos: (42, 5), color: YELLOW }, Pixel { pos: (43, 5), color: YELLOW },
-                Pixel { pos: (44, 5), color: YELLOW }, Pixel { pos: (45, 5), color: YELLOW },
-                Pixel { pos: (46, 5), color: YELLOW }, Pixel { pos: (47, 5), color: YELLOW },
-                Pixel { pos: (48, 5), color: YELLOW }, Pixel { pos: (49, 5), color: YELLOW },
+For example, you can arrange yellow and black pixels to draw a smiley face.
 
-                Pixel { pos: (40, 6), color: YELLOW }, Pixel { pos: (41, 6), color: YELLOW },
-                Pixel { pos: (42, 6), color: BLACK }, Pixel { pos: (43, 6), color: BLACK },
-                Pixel { pos: (44, 6), color: YELLOW }, Pixel { pos: (45, 6), color: YELLOW },
-                Pixel { pos: (46, 6), color: BLACK }, Pixel { pos: (47, 6), color: BLACK },
-                Pixel { pos: (48, 6), color: YELLOW }, Pixel { pos: (49, 6), color: YELLOW },
+```rust
+use tglib_rs::components::{Pixel, PixelSet};
+use tglib_rs::colors::*;
 
-                Pixel { pos: (40, 7), color: YELLOW }, Pixel { pos: (41, 7), color: YELLOW },
-                Pixel { pos: (42, 7), color: YELLOW }, Pixel { pos: (43, 7), color: YELLOW },
-                Pixel { pos: (44, 7), color: YELLOW }, Pixel { pos: (45, 7), color: YELLOW },
-                Pixel { pos: (46, 7), color: YELLOW }, Pixel { pos: (47, 7), color: YELLOW },
-                Pixel { pos: (48, 7), color: YELLOW }, Pixel { pos: (49, 7), color: YELLOW },
+let pixel_set = PixelSet {
+    pixels: vec![
+        Pixel { pos: (40, 5), color: YELLOW },
+        Pixel { pos: (41, 5), color: YELLOW },
+        Pixel { pos: (42, 5), color: YELLOW },
+        Pixel { pos: (43, 5), color: YELLOW },
+        Pixel { pos: (44, 5), color: YELLOW },
+    ],
+};
 
-                Pixel { pos: (40, 8), color: YELLOW }, Pixel { pos: (41, 8), color: YELLOW },
-                Pixel { pos: (42, 8), color: BLACK }, Pixel { pos: (43, 8), color: BLACK },
-                Pixel { pos: (44, 8), color: BLACK }, Pixel { pos: (45, 8), color: BLACK },
-                Pixel { pos: (46, 8), color: BLACK }, Pixel { pos: (47, 8), color: BLACK },
-                Pixel { pos: (48, 8), color: YELLOW }, Pixel { pos: (49, 8), color: YELLOW },
-
-                Pixel { pos: (40, 9), color: YELLOW }, Pixel { pos: (41, 9), color: YELLOW },
-                Pixel { pos: (42, 9), color: YELLOW }, Pixel { pos: (43, 9), color: YELLOW },
-                Pixel { pos: (44, 9), color: YELLOW }, Pixel { pos: (45, 9), color: YELLOW },
-                Pixel { pos: (46, 9), color: YELLOW }, Pixel { pos: (47, 9), color: YELLOW },
-                Pixel { pos: (48, 9), color: YELLOW }, Pixel { pos: (49, 9), color: YELLOW },
-            ],
-        };
-
-    terminal.show_pixelset(&pixel_set);
-}
+terminal.show_pixelset(&pixel_set);
 ```
 
-Although this may look confusing it prints a smiley face into the terminal when ran
+Add more pixels to create your own designs. The example above shows a small section of a design rather than a complete smiley face.
 
-Cells are a little bit different though as they do not contain a cellset component
-to init a cell you must run `let my_cell = Cell { pos: (1,1), color: BG_RED, char_: '#', char_color: BLUE }`
-then run `show_cell(my_cell)` after
+### Cells
 
-## Key binding
+A cell can contain a character with its own foreground and background colours.
 
-You can bind keys with
+For example:
 
-```rs
-use t_glib::types::Key;
-use t_glib::components::BIND;
+```rust
+use tglib_rs::components::Cell;
+use tglib_rs::colors::*;
 
-static COUNT: AtomicUsize = AtomicUsize::new(0); 
+let my_cell = Cell {
+    pos: (1, 1),
+    color: BG_RED,
+    char_: '#',
+    char_color: BLUE,
+};
+
+terminal.show_cell(my_cell);
+```
+
+Unlike a pixel, a cell can display a character.
+
+## Key Bindings
+
+TgLib supports binding keys to functions.
+
+For example, you can bind the space bar to a function that increments a counter.
+
+```rust
+use tglib_rs::components::BIND;
+use tglib_rs::types::Key;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static COUNT: AtomicUsize = AtomicUsize::new(0);
 
 fn inc_count() {
     COUNT.fetch_add(1, Ordering::Relaxed);
 }
 
 fn main() {
-    let counter_bind = BIND { // Create the variable
-        func: inc_count,      // Init the function it runs   
-        key: Key::SPACE,      // Init what key runs the function
+    let terminal = Terminal::new();
+
+    terminal.setup();
+
+    let counter_bind = BIND {
+        func: inc_count,
+        key: Key::SPACE,
     };
 
-    terminal.bind(counter_bind);  // Bind the key to the function
+    terminal.bind(counter_bind);
 
-    terminal.process_binds();     // Proccess all initialised binds
-    let count: usize = COUNT.load(Ordering::Relaxed); // Update the COUNT variable in this example
+    loop {
+        terminal.process_binds();
+
+        let count = COUNT.load(Ordering::Relaxed);
+
+        if terminal.is_interrupted() {
+            break;
+        }
+
+        terminal.sleep(
+            std::time::Duration::from_millis(16)
+        );
+    }
+
+    terminal.leave();
 }
 ```
 
+In this example:
+
+- `BIND` associates a key with a function.
+- `Key::SPACE` selects the space bar.
+- `inc_count` increments the counter.
+- `process_binds` processes the registered bindings.
+
 ## Notifications
 
-TgLib allows you to trigger native desktop notifications across Windows and Unix platforms without extra dependencies.
+TgLib supports desktop notifications on Windows and Unix platforms.
 
 ```rust
-use t_glib::components::Notification;
-use t_glib::types::NotificationType;
+use tglib_rs::components::Notification;
+use tglib_rs::types::NotificationType;
 
 fn main() {
     Notification::new(
@@ -265,19 +255,50 @@ fn main() {
 }
 ```
 
+This creates a notification with a title, body, and notification type.
+
+## Project Structure
+
+The library source code is organised into modules:
+
+```text
+src/
+├── lib.rs
+├── terminal.rs
+├── types.rs
+├── colors.rs
+├── components.rs
+└── platform/
+    ├── mod.rs
+    ├── windows.rs
+    └── unix.rs
+```
+
+- `lib.rs` exposes the public library API.
+- `terminal.rs` contains terminal management.
+- `types.rs` defines types used throughout the library.
+- `colors.rs` contains colour constants.
+- `components.rs` contains UI components.
+- `platform/` contains platform-specific implementations.
+
+## Documentation
+
+- [Crates.io](https://crates.io/crates/tglib-rs)
+- [API Documentation](https://docs.rs/tglib-rs)
+- [GitHub Repository](https://github.com/enesx32/TgLib)
+
 ## Status
 
-TgLib is currently in **early development (0.2.3)**.
+TgLib is currently in early development, version **0.2.3**.
 
-The API may change significantly as more terminal UI functionality is added.
+The API may change as more terminal UI functionality is added.
 
 ## Contributing
 
 Contributions, suggestions, and bug reports are welcome.
 
-If you find a bug or have an idea for a feature, feel free to open an issue or pull request.
+Feel free to open an issue or submit a pull request on GitHub.
 
 ## License
 
-License information will be added in a future release.
-Probably not tho XD
+TgLib is licensed under the MIT License.
