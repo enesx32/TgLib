@@ -1,14 +1,20 @@
+
 [package]
-name = "t_glib"
+name = "tglib"
 version = "0.2.3"
 edition = "2024"
+description = "A terminal UI library written in Rust"
+repository = "https://github.com/enesx32/TgLib"
+license = "MIT"
+
+[lib]
+name = "tglib"
+path = "src/lib.rs"
 
 [dependencies]
 
 [target.'cfg(windows)'.dependencies]
-windows = { version = "0.62.2", features = [
-    "Win32_System_Console",
-    "Win32_UI_Input_KeyboardAndMouse",
-] }
+windows = { version = "0.62.2", features = ["Win32_System_Console", "Win32_UI_Input_KeyboardAndMouse",] }
+
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.189"

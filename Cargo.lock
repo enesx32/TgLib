@@ -38,7 +38,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "t_glib"
+name = "tglib"
 version = "0.2.3"
 dependencies = [
  "libc",
