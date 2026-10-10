@@ -119,6 +119,59 @@ Use foreground colours to change text colour and background colours to change th
 
 More colours and styles are available in the `colors` module.
 
+## Buffered Rendering
+
+For flicker-free interfaces, build a frame in memory and write it to the
+terminal in a single step. TgLib keeps the previously rendered frame and only
+updates the cells that actually changed.
+
+```rust
+use tglib::Terminal;
+use tglib::components::Label;
+use tglib::colors::*;
+use tglib::types::Text;
+
+fn main() {
+    let terminal = Terminal::new();
+
+    // `setup_guard` restores the terminal when it is dropped.
+    let _guard = terminal.setup_guard();
+    terminal.hide_cursor();
+
+    let mut count = 0;
+
+    while !terminal.is_interrupted() {
+        let status = Label {
+            pos: (2, 1),
+            fore_color: GREEN,
+            back_color: BG_BLACK,
+            text: Text::from_str(&format!("Count: {}", count)),
+        };
+
+        terminal.begin_frame();
+        terminal.draw(&status);
+        terminal.render();
+
+        count += 1;
+        terminal.sleep(std::time::Duration::from_millis(250));
+    }
+}
+```
+
+- `begin_frame()` starts a new frame and blanks the back buffer.
+- `draw(&label)` (also `draw_text`, `draw_cell` and `draw_pixelset`) adds
+  components to the frame.
+- `render()` diffs the frame against the previous one, writes only the changed
+  cells and flushes stdout once.
+- `TerminalGuard` returned by `setup_guard()` restores the terminal on drop.
+  Call `disarm()` if you prefer to call `leave()` manually.
+
+Rendering an unchanged frame produces no output at all, and shortening a
+label's text clears the leftover characters automatically.
+
+Terminal state can be restored on normal exit and on panics that unwind, but
+not after a crash or a forced process termination.
+
 ## Terminal Coordinates
 
 TgLib uses `(x, y)` coordinates to position components.
