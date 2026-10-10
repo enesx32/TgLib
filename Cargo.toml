@@ -1,7 +1,6 @@
-
 [package]
 name = "tglib-rs"
-version = "0.2.3"
+version = "0.2.5"
 edition = "2024"
 description = "A terminal UI library written in Rust"
 repository = "https://github.com/enesx32/TgLib"

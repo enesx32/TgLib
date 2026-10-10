@@ -35,7 +35,7 @@ Or add it manually to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tglib-rs = "0.2.3"
+tglib-rs = "0.2.5"
 ```
 
 **Requirements**
