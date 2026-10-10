@@ -1,14 +1,28 @@
+// A minimal double-buffered renderer used by `Terminal` to implement
+// flicker-free, in-place updates. The back buffer (`current`) is built each
+// frame; `render` diffs it against the front buffer (`previous`) and emits
+// only the escape sequences needed to update the changed cells.
+
 use crate::colors::RESET;
 use crate::components::{Cell, Label, NCLabel, PixelSet};
 
+/// A single cell in the off-screen buffer.
+///
+/// Cells compare by value so the renderer can diff the current frame against
+/// the previous one.
 #[derive(Clone, PartialEq, Eq)]
 struct BufferCell {
+    /// The character stored in this cell.
     ch: char,
+    /// Foreground colour escape sequence.
     fore: &'static str,
+    /// Background colour escape sequence.
     back: &'static str,
 }
 
 impl BufferCell {
+    /// Returns an empty cell: a space drawn with the terminal's default
+    /// colours.
     const fn blank() -> Self {
         BufferCell {
             ch: ' ',
@@ -24,14 +38,22 @@ impl BufferCell {
 /// then call [`Renderer::render`] to get the escape sequences that only
 /// touch the cells which changed since the previous frame.
 pub struct Renderer {
+    /// Width of the buffer in cells.
     width: u16,
+    /// Height of the buffer in cells.
     height: u16,
+    /// The frame currently being built (back buffer).
     current: Vec<BufferCell>,
+    /// The last frame written to the terminal (front buffer).
     previous: Vec<BufferCell>,
+    /// When `true`, the next render clears the screen first (used after a
+    /// resize or an external invalidation).
     needs_clear: bool,
 }
 
 impl Renderer {
+    /// Creates a renderer with a back and front buffer of `width × height`
+    /// blank cells.
     pub fn new(width: u16, height: u16) -> Self {
         let size = width as usize * height as usize;
 
@@ -44,10 +66,12 @@ impl Renderer {
         }
     }
 
+    /// Returns the current buffer width in cells.
     pub fn width(&self) -> u16 {
         self.width
     }
 
+    /// Returns the current buffer height in cells.
     pub fn height(&self) -> u16 {
         self.height
     }
@@ -86,6 +110,8 @@ impl Renderer {
         }
     }
 
+    // Writes a single cell at `(x, y)` into the back buffer, ignoring
+    // coordinates that fall outside the screen.
     fn set(&mut self, x: u16, y: u16, ch: char, fore: &'static str, back: &'static str) {
         if x >= self.width || y >= self.height {
             return;
@@ -121,6 +147,7 @@ impl Renderer {
         }
     }
 
+    /// Draws a [`Label`] at its own position into the back buffer.
     pub fn draw_label(&mut self, label: &Label) {
         self.draw_text(
             label.pos.0,
@@ -131,6 +158,7 @@ impl Renderer {
         );
     }
 
+    /// Draws an [`NCLabel`] at `pos` into the back buffer.
     pub fn draw_nclabel(&mut self, label: &NCLabel, pos: (u16, u16)) {
         self.draw_text(
             pos.0,
@@ -141,6 +169,7 @@ impl Renderer {
         );
     }
 
+    /// Draws a single [`Cell`] (character plus colours) into the back buffer.
     pub fn draw_cell(&mut self, cell: &Cell) {
         self.set(
             cell.pos.0,
@@ -151,6 +180,8 @@ impl Renderer {
         );
     }
 
+    /// Draws every [`Pixel`](crate::components::Pixel) in a
+    /// [`PixelSet`] into the back buffer as a filled block.
     pub fn draw_pixelset(&mut self, pixel_set: &PixelSet) {
         for pixel in &pixel_set.pixels {
             self.set(pixel.pos.0, pixel.pos.1, '█', pixel.color, RESET);
@@ -218,6 +249,7 @@ mod tests {
     use crate::components::Label;
     use crate::types::Text;
 
+    // Builds a `Label` for use in the tests below.
     fn label(x: u16, y: u16, fore: &'static str, back: &'static str, text: &str) -> Label {
         Label {
             pos: (x, y),
@@ -228,6 +260,7 @@ mod tests {
     }
 
     #[test]
+    // A single rendered label produces its cursor move, text and colours.
     fn frame_contains_text_position_and_colors() {
         let mut renderer = Renderer::new(20, 5);
 
@@ -243,6 +276,7 @@ mod tests {
     }
 
     #[test]
+    // Rendering the exact same frame twice emits nothing the second time.
     fn unchanged_frame_produces_no_output() {
         let mut renderer = Renderer::new(20, 5);
 
@@ -258,6 +292,7 @@ mod tests {
     }
 
     #[test]
+    // Shortening a label replaces the leftover characters with spaces.
     fn shorter_text_clears_leftover_characters() {
         let mut renderer = Renderer::new(20, 5);
 
@@ -278,6 +313,7 @@ mod tests {
     }
 
     #[test]
+    // Changing a label's colours emits the new escape sequences.
     fn changing_colors_emits_new_style() {
         let mut renderer = Renderer::new(20, 5);
 
@@ -295,6 +331,7 @@ mod tests {
     }
 
     #[test]
+    // Several labels at different positions are all present in one frame.
     fn draws_multiple_labels() {
         let mut renderer = Renderer::new(30, 10);
 
@@ -310,6 +347,7 @@ mod tests {
     }
 
     #[test]
+    // Text that runs past the right edge is clipped.
     fn clips_text_to_screen() {
         let mut renderer = Renderer::new(5, 3);
 
@@ -323,6 +361,7 @@ mod tests {
     }
 
     #[test]
+    // Draws fully outside the screen are ignored.
     fn ignores_draws_outside_screen() {
         let mut renderer = Renderer::new(10, 4);
 
@@ -335,6 +374,7 @@ mod tests {
     }
 
     #[test]
+    // `invalidate` forces an unchanged frame to be redrawn.
     fn invalidate_forces_redraw_of_unchanged_frame() {
         let mut renderer = Renderer::new(20, 5);
 
@@ -352,6 +392,7 @@ mod tests {
     }
 
     #[test]
+    // Multi-byte UTF-8 characters are drawn correctly.
     fn handles_multibyte_characters() {
         let mut renderer = Renderer::new(20, 5);
 
@@ -363,6 +404,7 @@ mod tests {
     }
 
     #[test]
+    // Resizing clears the screen and redraws the current content.
     fn resize_clears_screen_and_redraws() {
         let mut renderer = Renderer::new(20, 5);
 

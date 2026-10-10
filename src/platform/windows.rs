@@ -1,3 +1,7 @@
+// Windows implementation of the platform layer. Provides console sizing,
+// keyboard state polling, the Ctrl+C handler and PowerShell-based desktop
+// notifications.
+
 use windows::Win32::System::Console::{
     GetConsoleScreenBufferInfo,
     GetStdHandle,
@@ -39,10 +43,15 @@ use std::process::{Command,Stdio };
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 
+// Tracks whether Ctrl+C or Ctrl+Break has been pressed.
 static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 
+// Remembers the previous state of every virtual key so a key press is only
+// reported once.
 static KEY_STATES: Mutex<[bool; 256]> = Mutex::new([false; 256]);
 
+// Marks the library as interrupted when a Ctrl+C event arrives. Returns
+// `true` (fully handled) for Ctrl+C events and `false` otherwise.
 unsafe extern "system" fn ctrl_c_handler(event: u32) -> windows::core::BOOL {
     if event == 0 {
         INTERRUPTED.store(true, Ordering::SeqCst);
@@ -52,6 +61,8 @@ unsafe extern "system" fn ctrl_c_handler(event: u32) -> windows::core::BOOL {
     }
 }
 
+/// Installs the Windows Ctrl+C handler that flags the terminal as
+/// interrupted.
 pub fn install_ctrl_c_handler() {
     unsafe {
         SetConsoleCtrlHandler(Some(ctrl_c_handler), true)
@@ -59,6 +70,10 @@ pub fn install_ctrl_c_handler() {
     }
 }
 
+/// Shows a desktop notification using a PowerShell balloon tip.
+///
+/// The notification icon and tooltip type are derived from `type_`. Failures
+/// to launch PowerShell are silently ignored.
 pub fn notify(title: &str, body: &str, type_: NotificationType) {
     let icon_name = match type_ {
         NotificationType::Info => "Info",
@@ -81,20 +96,31 @@ pub fn notify(title: &str, body: &str, type_: NotificationType) {
         .stderr(Stdio::null())
         .status();
 }
+/// Returns `true` if Ctrl+C has been pressed since the handler was installed.
 pub fn is_interrupted() -> bool {
     INTERRUPTED.load(Ordering::SeqCst)
 }
 
+/// Configures keyboard input for immediate use.
+///
+/// On Windows the console is already line-buffered in this project's model,
+/// so nothing needs to be changed.
 pub fn setup_keyboard() {}
 
+/// Restores keyboard behaviour to its original state.
+///
+/// On Windows there is nothing to undo.
 pub fn restore_keyboard() {}
 
+// Reports whether the given virtual key is currently held down.
 fn is_pressed_now(vk: i32) -> bool {
     unsafe {
         (GetAsyncKeyState(vk) as u16 & 0x8000) != 0
     }
 }
 
+// Returns `Some(key)` only on a fresh press (key went from up to down),
+// updating the tracked state.
 fn check_key(vk: i32, key: Key, states: &mut [bool; 256]) -> Option<Key> {
     if vk < 0 || vk >= 256 {
         return None;
@@ -113,6 +139,8 @@ fn check_key(vk: i32, key: Key, states: &mut [bool; 256]) -> Option<Key> {
     }
 }
 
+/// Polls the keyboard and returns the first key that was freshly pressed, or
+/// `None` if no key changed state.
 pub fn read_key() -> Option<Key> {
     let mut states = KEY_STATES.lock().unwrap();
     let mut result = None;
@@ -194,6 +222,7 @@ pub fn read_key() -> Option<Key> {
     result
 }
 
+/// Clears the Windows console by running the `cls` command.
 pub fn clear_screen() {
     Command::new("cmd")
         .args(["/C", "cls"])
@@ -201,6 +230,8 @@ pub fn clear_screen() {
         .expect("failed to execute process");
 }
 
+/// Returns the height of the console window in rows, falling back to `24`
+/// when the size cannot be queried.
 pub fn get_terminal_height() -> u16 {
     let mut csbi: CONSOLE_SCREEN_BUFFER_INFO = unsafe {
         std::mem::zeroed()
@@ -224,8 +255,8 @@ pub fn get_terminal_height() -> u16 {
     }
 }
 
-
-
+/// Returns the width of the console window in columns, falling back to `80`
+/// when the size cannot be queried.
 pub fn get_terminal_width() -> u16 {
     let mut csbi: CONSOLE_SCREEN_BUFFER_INFO = unsafe {
         std::mem::zeroed()

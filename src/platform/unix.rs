@@ -1,3 +1,7 @@
+// Unix implementation of the platform layer. Provides terminal sizing via
+// `ioctl`, raw (non-blocking) keyboard input through termios, the SIGINT
+// handler and `notify-send` desktop notifications.
+
 use libc::{
     ioctl,
     winsize,
@@ -12,16 +16,22 @@ use std::process::Command;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::OnceLock;
 
+// Tracks whether SIGINT has been received since the handler was installed.
 static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 
+// The termios settings captured before switching to raw mode, used to restore
+// the terminal in `restore_keyboard`.
 static ORIGINAL_TERMIOS: OnceLock<libc::termios> = OnceLock::new();
 
+// The file-descriptor flags captured before enabling non-blocking reads.
 static ORIGINAL_FLAGS: AtomicI32 = AtomicI32::new(0);
 
+// Flag set from the SIGINT handler; read by `is_interrupted`.
 unsafe extern "C" fn ctrl_c_handler(_: libc::c_int) {
     INTERRUPTED.store(true, Ordering::SeqCst);
 }
 
+/// Installs a SIGINT handler that flags the terminal as interrupted.
 pub fn install_ctrl_c_handler() {
     unsafe {
         libc::signal(
@@ -31,10 +41,16 @@ pub fn install_ctrl_c_handler() {
     }
 }
 
+/// Returns `true` if SIGINT has been received since the handler was installed.
 pub fn is_interrupted() -> bool {
     INTERRUPTED.load(Ordering::SeqCst)
 }
 
+/// Switches stdin to raw, non-blocking mode so that keys can be read without
+/// waiting for a newline.
+///
+/// The previous termios settings and file-descriptor flags are saved so that
+/// [`restore_keyboard`] can undo this.
 pub fn setup_keyboard() {
     unsafe {
         let mut termios: libc::termios = std::mem::zeroed();
@@ -74,6 +90,8 @@ pub fn setup_keyboard() {
     }
 }
 
+/// Restores the terminal and stdin to the state captured before
+/// [`setup_keyboard`] was called.
 pub fn restore_keyboard() {
     unsafe {
         if let Some(termios) = ORIGINAL_TERMIOS.get() {
@@ -94,6 +112,8 @@ pub fn restore_keyboard() {
     }
 }
 
+// Maps a single UTF-8 byte (a plain ASCII character) to the corresponding
+// `Key`, or `None` if it is not recognised.
 fn char_to_key(c: u8) -> Option<Key> {
     match c {
         b'a' | b'A' => Some(Key::A),
@@ -141,6 +161,10 @@ fn char_to_key(c: u8) -> Option<Key> {
     }
 }
 
+/// Reads one key from stdin without blocking.
+///
+/// ANSI escape sequences (e.g. arrow keys) are decoded as well as plain
+/// characters. Returns `None` when nothing is available.
 pub fn read_key() -> Option<Key> {
     let mut buffer = [0u8; 8];
 
@@ -175,6 +199,10 @@ pub fn read_key() -> Option<Key> {
     char_to_key(buffer[0])
 }
 
+/// Shows a desktop notification using `notify-send`.
+///
+/// The urgency level is derived from `msg_type`. Failures to launch
+/// `notify-send` are silently ignored.
 pub fn notify(title: &str, body: &str, msg_type: NotificationType) {
     let urgency = match msg_type {
         NotificationType::Info => "low",
@@ -190,6 +218,8 @@ pub fn notify(title: &str, body: &str, msg_type: NotificationType) {
         .status();
 }
 
+/// Returns the terminal size as `(columns, rows)` using `ioctl`, falling
+/// back to `(80, 24)` when the size cannot be queried.
 pub fn get_terminal_size() -> (u16, u16) {
     let mut size = winsize {
         ws_row: 0,
@@ -216,14 +246,17 @@ pub fn get_terminal_size() -> (u16, u16) {
     }
 }
 
+/// Returns the terminal width in columns.
 pub fn get_terminal_width() -> u16 {
     get_terminal_size().0
 }
 
+/// Returns the terminal height in rows.
 pub fn get_terminal_height() -> u16 {
     get_terminal_size().1
 }
 
+/// Clears the terminal by running the `clear` command.
 pub fn clear_screen() {
     Command::new("clear")
         .status()
