@@ -145,6 +145,14 @@ impl Terminal {
         self.height
     }
 
+    /// Returns the current cursor position as `(column, row)` in terminal
+    /// cells, relative to the top-left of the visible screen.
+    ///
+    /// Falls back to `(0, 0)` when the position cannot be queried.
+    pub fn cursor_position(&self) -> (u16, u16) {
+        get_cursor_position()
+    }
+
     /// Draws both coordinate rulers.
     ///
     /// Equivalent to calling [`debug_coordinates_x`](Terminal::debug_coordinates_x)

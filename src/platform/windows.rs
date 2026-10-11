@@ -14,6 +14,8 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState,
     VK_SPACE,
     VK_TAB,
+    VK_RETURN,
+    VK_ESCAPE,
     VK_CAPITAL,
     VK_SHIFT,
     VK_CONTROL,
@@ -204,6 +206,8 @@ pub fn read_key() -> Option<Key> {
         (VK_LWIN.0 as i32, Key::WIN),
         (VK_MENU.0 as i32, Key::ALT),
         (VK_SPACE.0 as i32, Key::SPACE),
+        (VK_RETURN.0 as i32, Key::ENTER),
+        (VK_ESCAPE.0 as i32, Key::ESC),
 
         (VK_UP.0 as i32, Key::UP),
         (VK_DOWN.0 as i32, Key::DOWN),
@@ -277,5 +281,35 @@ pub fn get_terminal_width() -> u16 {
         }
 
         Err(_) => 80,
+    }
+}
+
+/// Returns the current cursor position as `(column, row)`, using 0-based cells
+/// relative to the top-left of the console window.
+///
+/// Falls back to `(0, 0)` when the position cannot be queried.
+pub fn get_cursor_position() -> (u16, u16) {
+    let mut csbi: CONSOLE_SCREEN_BUFFER_INFO = unsafe {
+        std::mem::zeroed()
+    };
+
+    let handle = match unsafe {
+        GetStdHandle(STD_OUTPUT_HANDLE)
+    } {
+        Ok(handle) => handle,
+        Err(_) => return (0, 0),
+    };
+
+    match unsafe {
+        GetConsoleScreenBufferInfo(handle, &mut csbi)
+    } {
+        Ok(_) => {
+            let column = csbi.dwCursorPosition.X - csbi.srWindow.Left;
+            let row = csbi.dwCursorPosition.Y - csbi.srWindow.Top;
+
+            (column.max(0) as u16, row.max(0) as u16)
+        }
+
+        Err(_) => (0, 0),
     }
 }

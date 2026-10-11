@@ -9,17 +9,23 @@ TgLib (Terminal Graphics Library) makes building terminal-based applications eas
 [![Documentation](https://img.shields.io/docsrs/tglib-rs?style=flat-square)](https://docs.rs/tglib-rs)
 [![License](https://img.shields.io/crates/l/tglib-rs?style=flat-square)](https://github.com/enesx32/TgLib)
 [![GitHub Stars](https://img.shields.io/github/stars/enesx32/TgLib?style=flat-square)](https://github.com/enesx32/TgLib)
+[![Rust](https://img.shields.io/badge/rust-2024-orange?style=flat-square&logo=rust)](https://www.rust-lang.org)
+[![Platform](https://img.shields.io/badge/platform-windows%20%7C%20linux%20%7C%20macos-blue?style=flat-square)](https://github.com/enesx32/TgLib)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](https://github.com/enesx32/TgLib/pulls)
 
 ## Features
 
 - Terminal size detection
 - Cross-platform terminal support
 - Screen clearing and terminal management
+- Buffered, flicker-free frame rendering (only changed cells are written)
 - Foreground and background colours
 - Text components and positioned labels
 - Pixel-based terminal graphics
 - Individual character cells
-- Key binding support
+- Key binding support, including arrow keys, `ENTER` and `ESC`
+- Inline menus that draw below existing output without the alternate screen
+- Cursor position detection
 - Desktop notifications
 - Windows and Unix support
 
@@ -35,7 +41,7 @@ Or add it manually to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tglib-rs = "0.2.5"
+tglib-rs = "0.2.6"
 ```
 
 **Requirements**
@@ -65,7 +71,7 @@ fn main() {
         fore_color: GREEN,
         back_color: BG_BLACK,
         text: Text::from_str(
-            "Welcome to TgLib! | Version 0.2.3"
+            "Welcome to TgLib! | Version 0.2.6"
         ),
     };
 
@@ -186,6 +192,30 @@ This represents column `40` and row `3`.
 
 Coordinates use terminal character cells, not physical screen pixels.
 
+### Cursor Position
+
+`Terminal::cursor_position()` reports where the cursor currently is as an
+`(x, y)` cell offset, so output can be placed relative to the existing prompt or
+command output instead of the top-left corner.
+
+```rust
+use tglib::Terminal;
+
+fn main() {
+    let terminal = Terminal::new();
+
+    // Jump to a fresh line, then read the row we are on.
+    print!("\r\n");
+    let (_, row) = terminal.cursor_position();
+
+    println!("Drawing from row {row} onwards");
+}
+```
+
+On Windows this uses `GetConsoleScreenBufferInfo`; on Unix it sends an ANSI
+device status request (`ESC[6n`) and parses the reply. If a terminal does not
+answer the request, the fallback position is `(0, 0)`.
+
 ## Pixels and Cells
 
 TgLib provides ways to draw simple graphics directly in the terminal.
@@ -291,6 +321,32 @@ In this example:
 - `inc_count` increments the counter.
 - `process_binds` processes the registered bindings.
 
+### Special Keys
+
+Besides printable characters, the `Key` enum includes the non-printing keys
+used by menus and other interactive interfaces:
+
+- `Key::UP` / `Key::DOWN` (and `LEFT` / `RIGHT`) for navigation.
+- `Key::ENTER`, produced by `\r` or `\n` on Unix and by `VK_RETURN` on Windows.
+- `Key::ESC`, produced by a lone `0x1b` byte on Unix and by `VK_ESCAPE` on
+  Windows.
+
+## Interactive Menu Example
+
+`examples/menu.rs` shows a complete, inline menu in the style of
+`ollama launch opencode`. It uses the buffered rendering API, UP/DOWN to move
+the `▸` marker, `ENTER` to confirm and `ESC` (or Ctrl+C) to quit.
+
+```powershell
+cargo run --example menu
+```
+
+The menu is drawn in the normal terminal buffer, starting on the row the cursor
+is already on, so it appears below existing output. It never clears the screen
+and never enters the alternate screen. Before drawing it checks the terminal
+height and, if the menu would run past the bottom, scrolls the terminal up so
+the whole menu stays visible while earlier output is kept in the scrollback.
+
 ## Notifications
 
 TgLib supports desktop notifications on Windows and Unix platforms.
@@ -342,7 +398,7 @@ src/
 
 ## Status
 
-TgLib is currently in early development, version **0.2.3**.
+TgLib is currently in early development, version **0.2.6**.
 
 The API may change as more terminal UI functionality is added.
 

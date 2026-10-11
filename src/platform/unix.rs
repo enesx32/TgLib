@@ -12,6 +12,7 @@ use libc::{
 
 use crate::types::{ Key, NotificationType };
 
+use std::io::{self, Write};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::OnceLock;
@@ -156,6 +157,7 @@ fn char_to_key(c: u8) -> Option<Key> {
 
         b' ' => Some(Key::SPACE),
         b'\t' => Some(Key::TAB),
+        b'\r' | b'\n' => Some(Key::ENTER),
 
         _ => None,
     }
@@ -181,6 +183,11 @@ pub fn read_key() -> Option<Key> {
     }
 
     let amount = amount as usize;
+
+    // A lone Escape byte (when no escape sequence follows) is the Esc key.
+    if amount == 1 && buffer[0] == 27 {
+        return Some(Key::ESC);
+    }
 
     if amount >= 3
         && buffer[0] == 27
@@ -254,6 +261,73 @@ pub fn get_terminal_width() -> u16 {
 /// Returns the terminal height in rows.
 pub fn get_terminal_height() -> u16 {
     get_terminal_size().1
+}
+
+/// Returns the current cursor position as `(column, row)`, using 0-based cells
+/// relative to the top-left of the visible screen.
+///
+/// The position is obtained by asking the terminal for a Device Status Report
+/// (`ESC [ 6 n`) and reading its reply. Falls back to `(0, 0)` when the
+/// terminal does not answer promptly.
+pub fn get_cursor_position() -> (u16, u16) {
+    let mut stdout = io::stdout();
+
+    let _ = stdout.write_all(b"\x1b[6n");
+    let _ = stdout.flush();
+
+    let mut buffer = [0u8; 32];
+    let mut length = 0usize;
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(50);
+
+    while length < buffer.len() {
+        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+        let timeout = remaining.as_millis().min(i32::MAX as u128) as i32;
+
+        let mut descriptor = libc::pollfd {
+            fd: STDIN_FILENO,
+            events: libc::POLLIN,
+            revents: 0,
+        };
+
+        if unsafe { libc::poll(&mut descriptor, 1, timeout) } <= 0 {
+            break;
+        }
+
+        let amount = unsafe {
+            libc::read(
+                STDIN_FILENO,
+                buffer[length..].as_mut_ptr() as *mut libc::c_void,
+                buffer.len() - length
+            )
+        };
+
+        if amount <= 0 {
+            break;
+        }
+
+        length += amount as usize;
+
+        if buffer[..length].contains(&b'R') {
+            break;
+        }
+    }
+
+    parse_cursor_reply(&buffer[..length]).unwrap_or((0, 0))
+}
+
+// Parses a cursor position reply of the form `ESC [ row ; column R`, returning
+// the 0-based `(column, row)` it encodes.
+fn parse_cursor_reply(buffer: &[u8]) -> Option<(u16, u16)> {
+    let text = std::str::from_utf8(buffer).ok()?;
+    let start = text.find('[')? + 1;
+    let end = text.find('R')?;
+
+    let mut parts = text[start..end].split(';');
+
+    let row = parts.next()?.parse::<u16>().ok()?;
+    let column = parts.next()?.parse::<u16>().ok()?;
+
+    Some((column.saturating_sub(1), row.saturating_sub(1)))
 }
 
 /// Clears the terminal by running the `clear` command.

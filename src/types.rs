@@ -153,6 +153,10 @@ pub enum Key {
     ALT,
     /// The `Space` key.
     SPACE,
+    /// The `Enter`/`Return` key.
+    ENTER,
+    /// The `Escape` key.
+    ESC,
     /// The `Up` arrow key.
     UP,
     /// The `Down` arrow key.
